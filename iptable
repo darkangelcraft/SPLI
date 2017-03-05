@@ -1,0 +1,216 @@
+-----Block Specific IP Address in IPtables Firewall
+If you find an unusual or abusive activity from an IP address you can block that IP address with the following rule:
+
+# iptables -A INPUT -s xxx.xxx.xxx.xxx -j DROP
+//per tcp
+# iptables -A INPUT -p tcp -s xxx.xxx.xxx.xxx -j DROP
+
+---- Block Specific Port on IPtables Firewall
+Sometimes you may want to block incoming or outgoing connections on a specific port. It’s a good security measure and you should really think on that matter when setting up your firewall.
+
+To block outgoing connections on a specific port use:
+
+# iptables -A OUTPUT -p tcp --dport x
+# iptables -A INPUT -p tcp --dport xxx -j Axx -j DROP
+To allow incoming connections use:
+CCEPT
+In both examples change "xxx" with the actual port you wish to allow. If you want to block UDP traffic instead of TCP, simply change "tcp" with "udp" in the above iptables rule.
+
+-----# host facebook.com 
+facebook.com has address 66.220.156.68
+# whois 66.220.156.68 | grep CIDR
+CIDR: 66.220.144.0/20
+You can then block that Facebook network with:
+
+# iptables -A OUTPUT -p tcp -d 66.220.144.0/20 -j DROP
+
+------11. Block Incoming Ping Requests on IPtables
+Some system administrators like to block incoming ping requests due to security concerns. While the threat is not that big, it’s good to know how to block such request:
+		OUTPUT
+# iptables -A INPUT -p icmp -i eth0 -j DROP
+
+-----14. Block Access to Specific MAC Address on IPtables
+You can block access to your system from specific MAC address by using:
+
+# iptables -A INPUT -m mac --mac-source 00:00:00:00:00:00 -j DROP
+
+-----15. Limit the Number of Concurrent Connections per IP Address
+If you don’t want to have too many concurrent connection established from single IP address on given port you can use the command below:
+
+# iptables -A INPUT -p tcp --syn --dport 22 -m connlimit --connlimit-above 3 -j REJECT
+The above command allows no more than 3 connections per client. Of course, you can change the port number to match different service. Also the --connlimit-above should be changed to match your requirement.
+
+-----# 23. Prevent DoS attack
+iptables -A INPUT -p tcp --dport 80 -m limit --limit 25/minute --limit-burst 100 -j ACCEPT
+
+------# 24. Port forwarding 422 to 22
+#iptables -t nat -A PREROUTING -p tcp -d 192.168.102.37 --dport 422 -j DNAT --to 192.168.102.37:22
+#iptables -A INPUT -i eth0 -p tcp --dport 422 -m state --state NEW,ESTABLISHED -j ACCEPT
+#iptables -A OUTPUT -o eth0 -p tcp --sport 422 -m state --state ESTABLISHED -j ACCEPT
+
+------# 25. Log dropped packets
+iptables -N LOGGING
+iptables -A INPUT -j LOGGING
+iptables -A LOGGING -m limit --limit 2/min -j LOG --log-prefix "IPTables Packet Dropped: " --log-level 7
+iptables -A LOGGING -j DROP
+
+
+-----Protection against spoofing attacks
+Note: rp_filter is currently set to 1 by default in /usr/lib/sysctl.d/50-default.conf, so the following step is not necessary.
+Blocking reserved local addresses incoming from the internet or local network is normally done through setting rp_filter (Reverse Path Filter) in sysctl to 1. To do so, add the following line to your /etc/sysctl.d/90-firewall.conf file (see sysctl for details) to enable source address verification which is built into Linux kernel itself. The verification by the kernel will handle spoofing better than individual iptables rules for each case.
+net.ipv4.conf.all.rp_filter=1
+This can be done with netfilter instead if statistics (and better logging) are desired:
+# iptables -t raw -I PREROUTING -m rpfilter --invert -j DROP
+Note: There is no reason to enable this in both places. The netfilter method is the modern choice and works with IPv6 too.
+For niche setups where asynchronous routing is used, the rp_filter=2 sysctl option needs to be used instead. Passing the --loose switch to the rpfilter module will accomplish the same thing with netfilter.
+
+----SYN scans
+In a SYN scan, the port scanner sends SYN packet to every port. Closed ports return a TCP RESET packet, or get dropped by a strict firewall. Open ports return a SYN ACK packet regardless of the presence of a firewall.
+The recent module can be used to keep track of hosts with rejected connection attempts and return a TCP RESET for any SYN packet they send to open ports as if the port was closed. If an open port is the first to be scanned, a SYN ACK will still be returned, so running applications such as ssh on non-standard ports is required for this to work consistently.
+First, insert a rule at the top of the TCP chain. This rule responds with a TCP RESET to any host that got onto the TCP-PORTSCAN list in the past sixty seconds. The --update switch causes the recent list to be updated, meaning the 60 second counter is reset.
+# iptables -I TCP -p tcp -m recent --update --seconds 60 --name TCP-PORTSCAN -j REJECT --reject-with tcp-reset
+Next, the rule for rejecting TCP packets need to be modified to add hosts with rejected packets to the TCP-PORTSCAN list.
+# iptables -D INPUT -p tcp -j REJECT --reject-with tcp-reset
+# iptables -A INPUT -p tcp -m recent --set --name TCP-PORTSCAN -j REJECT --reject-with tcp-reset
+-------UDP scans
+UDP port scans are similar to TCP SYN scans except that UDP is a "connectionless" protocol. There are no handshakes or acknowledgements. Instead, the scanner sends UDP packets to each UDP port. Closed ports should return ICMP port unreachable messages, and open ports do not return a response. Since UDP is not a "reliable" protocol, the scanner has no way of knowing if packets were lost, and has to do multiple checks for each port that does not return a response.
+The Linux kernel sends out ICMP port unreachable messages very slowly, so a full UDP scan against a Linux machine would take over 10 hours. However, common ports could still be identified, so applying the same countermeasures against UDP scans as SYN scans is a good idea.
+First, add a rule to reject packets from hosts on the UDP-PORTSCAN list to the top of the UDP chain.
+# iptables -I UDP -p udp -m recent --update --seconds 60 --name UDP-PORTSCAN -j REJECT --reject-with icmp-port-unreachable
+Next, modify the reject packets rule for UDP:
+# iptables -D INPUT -p udp -j REJECT --reject-with icmp-port-unreachable
+# iptables -A INPUT -p udp -m recent --set --name UDP-PORTSCAN -j REJECT --reject-with icmp-port-unreachable
+
+-----Setting up a NAT gateway
+
+This section of the guide deals with NAT gateways. It is assumed that you already read the first part of the guide and set up the INPUT, OUTPUT, TCP and UDP chains like described above. All rules so far have been created in the filter table. In this section, we will also have to use the nat table.
+Setting up the filter table
+Creating necessary chains
+In our setup, we will use another two chains in the filter table, the fw-interfaces and fw-open chains. Create them with the commands
+# iptables -N fw-interfaces
+# iptables -N fw-open
+Setting up the FORWARD chain
+Setting up the FORWARD chain is similar to the INPUT chain in the first section.
+Now we set up a rule with the conntrack match, identical to the one in the INPUT chain:
+# iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+The next step is to enable forwarding for trusted interfaces and to make all packets pass the fw-open chain.
+# iptables -A FORWARD -j fw-interfaces 
+# iptables -A FORWARD -j fw-open 
+The remaining packets are denied with an ICMP message:
+# iptables -A FORWARD -j REJECT --reject-with icmp-host-unreachable
+# iptables -P FORWARD DROP
+Setting up the fw-interfaces and fw-open chains
+The meaning of the fw-interfaces and fw-open chains is explained later, when we deal with the POSTROUTING and PREROUTING chains in the nat table, respectively.
+Setting up the nat table
+All over this section, we assume that the outgoing interface (the one with the public internet IP) is ppp0. Keep in mind that you have to change the name in all following rules if your outgoing interface has another name.
+Setting up the POSTROUTING chain
+Now, we have to define who is allowed to connect to the internet. Let's assume we have the subnet 192.168.0.0/24 (which means all addresses that are of the form 192.168.0.*) on eth0. We first need to accept the machines on this interface in the FORWARD table, that is why we created the fw-interfaces chain above:
+# iptables -A fw-interfaces -i eth0 -j ACCEPT
+Now, we have to alter all outgoing packets so that they have our public IP address as the source address, instead of the local LAN address. To do this, we use the MASQUERADE target:
+# iptables -t nat -A POSTROUTING -s 192.168.0.0/24 -o ppp0 -j MASQUERADE
+Do not forget the -o ppp0 parameter above. If you omit it, your network will be screwed up.
+Let's assume we have another subnet, 10.3.0.0/16 (which means all addresses 10.3.*.*), on the interface eth1. We add the same rules as above again:
+# iptables -A fw-interfaces -i eth1 -j ACCEPT
+# iptables -t nat -A POSTROUTING -s 10.3.0.0/16 -o ppp0 -j MASQUERADE
+The last step is to enable packet forwarding (if it is not already enabled).
+Machines from these subnets can now use your new NAT machine as their gateway. Note that you may want to set up a DNS and DHCP server like dnsmasq or a combination of bind and dhcpd to simplify network settings DNS resolution on the client machines. This is not the topic of this guide.
+Setting up the PREROUTING chain
+Sometimes, we want to change the address of an incoming packet from the gateway to a LAN machine. To do this, we use the fw-open chain defined above, as well as the PREROUTING chain in the nat table in the following two simple examples.
+First, we want to change all incoming SSH packets (port 22) to the ssh server of the machine 192.168.0.5:
+# iptables -t nat -A PREROUTING -i ppp0 -p tcp --dport 22 -j DNAT --to 192.168.0.5
+# iptables -A fw-open -d 192.168.0.5 -p tcp --dport 22 -j ACCEPT
+The second example will show you how to change packets to a different port than the incoming port. We want to change any incoming connection on port 8000 to our web server on 192.168.0.6, port 80:
+# iptables -t nat -A PREROUTING -i ppp0 -p tcp --dport 8000 -j DNAT --to 192.168.0.6:80
+# iptables -A fw-open -d 192.168.0.6 -p tcp --dport 80 -j ACCEPT
+The same setup also works with udp packets.
+
+
+------Service: Mail
+Mail servers, such as Sendmail and Postfix, listen on a variety of ports depending on the protocols being used for mail delivery. If you are running a mail server, determine which protocols you are using and allow the appropriate types of traffic. We will also show you how to create a rule to block outgoing SMTP mail.
+
+Block Outgoing SMTP Mail
+
+If your server shouldn't be sending outgoing mail, you may want to block that kind of traffic. To block outgoing SMTP mail, which uses port 25, run this command:
+
+sudo iptables -A OUTPUT -p tcp --dport 25 -j REJECT
+This configures iptables to reject all outgoing traffic on port 25. If you need to reject a different service by its port number, instead of port 25, simply replace it.
+
+Allow All Incoming SMTP
+
+To allow your server to respond to SMTP connections, port 25, run these commands:
+
+sudo iptables -A INPUT -p tcp --dport 25 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 25 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established SMTP connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Note: It is common for SMTP servers to use port 587 for outbound mail.
+
+Allow All Incoming IMAP
+
+To allow your server to respond to IMAP connections, port 143, run these commands:
+
+sudo iptables -A INPUT -p tcp --dport 143 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 143 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established IMAP connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Allow All Incoming IMAPS
+
+To allow your server to respond to IMAPS connections, port 993, run these commands:
+
+sudo iptables -A INPUT -p tcp --dport 993 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 993 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established IMAPS connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Allow All Incoming POP3
+
+To allow your server to respond to POP3 connections, port 110, run these commands:
+
+sudo iptables -A INPUT -p tcp --dport 110 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 110 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established POP3 connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Allow All Incoming POP3S
+
+To allow your server to respond to POP3S connections, port 995, run these commands:
+
+sudo iptables -A INPUT -p tcp --dport 995 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 995 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established POP3S connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+------SQL Service: MySQL
+MySQL listens for client connections on port 3306. If your MySQL database server is being used by a client on a remote server, you need to be sure to allow that traffic.
+
+Allow MySQL from Specific IP Address or Subnet
+
+To allow incoming MySQL connections from a specific IP address or subnet, specify the source. For example, if you want to allow the entire 15.15.15.0/24 subnet, run these commands:
+
+sudo iptables -A INPUT -p tcp -s 15.15.15.0/24 --dport 3306 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 3306 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established MySQL connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Allow MySQL to Specific Network Interface
+
+To allow MySQL connections to a specific network interface—say you have a private network interface eth1, for example—use these commands:
+
+sudo iptables -A INPUT -i eth1 -p tcp --dport 3306 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -o eth1 -p tcp --sport 3306 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established MySQL connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Service: PostgreSQL
+PostgreSQL listens for client connections on port 5432. If your PostgreSQL database server is being used by a client on a remote server, you need to be sure to allow that traffic.
+
+PostgreSQL from Specific IP Address or Subnet
+
+To allow incoming PostgreSQL connections from a specific IP address or subnet, specify the source. For example, if you want to allow the entire 15.15.15.0/24 subnet, run these commands:
+
+sudo iptables -A INPUT -p tcp -s 15.15.15.0/24 --dport 5432 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --sport 5432 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established PostgreSQL connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
+
+Allow PostgreSQL to Specific Network Interface
+
+To allow PostgreSQL connections to a specific network interface—say you have a private network interface eth1, for example—use these commands:
+
+sudo iptables -A INPUT -i eth1 -p tcp --dport 5432 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+sudo iptables -A OUTPUT -o eth1 -p tcp --sport 5432 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+The second command, which allows the outgoing traffic of established PostgreSQL connections, is only necessary if the OUTPUT policy is not set to ACCEPT.
