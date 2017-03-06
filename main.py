@@ -1,5 +1,5 @@
 import os
-import subprocess
+import smtplib
 
 # e necessario far partire il programma dal terminale con i seguenti comandi:
 # sudo python main.py
@@ -41,6 +41,17 @@ while int_option is None:
             print "insert ip target:"
             ip = raw_input()
             print "mail sending..."
+
+            server = smtplib.SMTP('mailfake.gmail.com', 587)
+            server.starttls()
+            server.login("mailfake@gmail.com", "mailfakepassword")
+
+            msg = "YOUR MESSAGE!"
+            server.sendmail("alan.guerzi@gmail.com", "alan.guerzi@gmail.com", msg)
+            server.quit()
+        else:
+            os.system('sudo iptables -A INPUT -s 0.0.0.0 --dport 25 -j DROP')
+
 
 
 
