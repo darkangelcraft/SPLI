@@ -3,6 +3,11 @@ import smtplib
 import subprocess
 
 #BISOGNA INSTALLARE QUESTO PACCHETTO!!!
+# sudo apt-get install python2.7
+# sudo apt-get install python-pip
+# sudo aptitude install python2.7-setuptools
+# sudo aptitude install python2.7-dev
+# sudo pip install netifaces
 import netifaces as ni
 
 # e necessario far partire il programma dal terminale con i seguenti comandi:
@@ -20,7 +25,7 @@ wlan = raw_input()
 
 ni.ifaddresses(wlan)
 myIP = ni.ifaddresses(wlan)[2][0]['addr']
-print '- - - - - - - - - - - - - - - - - - - - - - - '+myIP+' - - - - - - - - - - - - - - - - - - - - - - - - - \n'
+print '- - - - - - - - - - '+myIP+' - - - - - - - - - - - - \n'
 
 print os.system('iwconfig | grep '+wlan)
 print '\n'
@@ -83,22 +88,22 @@ if not str(myIP).__contains__('172.30.'):
 
         # CONFIGURAZIONE HOST
         elif option == '1':
-            os.system('ifconfig '+wlan+' :1'+' 172.30.1.2/24')
+            os.system('ifconfig '+wlan+' 172.30.1.2/24')
             os.system('route add default gw 172.30.1.1')
             print 'host configured!'
             configured = 1
         elif option == '2':
-            os.system('ifconfig '+wlan+' :1'+' 172.30.1.3/24')
+            os.system('ifconfig '+wlan+' 172.30.1.3/24')
             os.system('route add default gw 172.30.1.1')
             print 'host configured!'
             configured = 1
         elif option == '3':
-            os.system('ifconfig '+wlan+' :1'+' 172.30.2.2/24')
+            os.system('ifconfig '+wlan+' 172.30.2.2/24')
             os.system('route add default gw 172.30.2.1')
             print 'host configured!'
             configured = 1
         elif option == '4':
-            os.system('ifconfig '+wlan+' :1'+' 172.30.2.3/24')
+            os.system('ifconfig '+wlan+' 172.30.2.3/24')
             os.system('route add default gw 172.30.2.1')
             print 'host configured!'
             configured = 1
