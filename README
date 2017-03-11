@@ -18,4 +18,3 @@ $ sudo pip install netifaces
 
 3)
 aprire terminale > cd percorso file > sudo python main.py > password di root
-
