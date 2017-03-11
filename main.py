@@ -1,6 +1,6 @@
 import os
 import smtplib
-import subprocess
+import socket
 
 #BISOGNA INSTALLARE QUESTO PACCHETTO!!!
 # sudo apt-get install python2.7
@@ -21,14 +21,14 @@ configured=0
 
 #il mio indirizzo IP
 print 'Name wireless interface:'
-wlan = raw_input()
+wlan = "wlan0" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
 
 ni.ifaddresses(wlan)
 myIP = ni.ifaddresses(wlan)[2][0]['addr']
-print '- - - - - - - - - - '+myIP+' - - - - - - - - - - - - \n'
+print '- - - - - - - - - - '+myIP+' - - - - - - - - - - - \n'
 
 print os.system('iwconfig | grep '+wlan)
-print '\n'
+print '- - - - - - - - - - - - - - - - - - - - - - - - - -'
 
 #########################################################################################################
 
@@ -118,7 +118,7 @@ else:
 
     while int_option is None:
 
-        print '1) Attacker'
+        print '\n1) Attacker'
         print '2) Defender'
 
         try:
@@ -129,38 +129,95 @@ else:
         # attacker
         if option == '1':
             print "1) Dos Attack"
-            print "2) Send Mail"
+            print "2) traffic tcp"
+            print "3) traffic udp"
 
             option1 = raw_input()
+
+            #dos attack
             if option1 == '1':
                 print "insert ip target:"
                 ip = raw_input()
                 print os.system('sudo ping -f '+ip)
 
+            #generate traffic tcp (client)
             elif option1 == '2':
-                print "sending mail.."
-                server = smtplib.SMTP('mailfake.gmail.com', 587)
-                server.starttls()
-                server.login("mailfake@gmail.com", "mailfakepassword")
+                print "insert ip target:"
 
-                msg = "YOUR MESSAGE!"
-                server.sendmail("alan.guerzi@gmail.com", "alan.guerzi@gmail.com", msg)
-                server.quit()
+                TCP_IP=raw_input()
+                TCP_PORT = 5005
+                BUFFER_SIZE = 1024
+
+                while 1:
+                    MESSAGE = "Hello, World! (TCP)"
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.connect((TCP_IP, TCP_PORT))
+                    s.send(MESSAGE)
+                    data = s.recv(BUFFER_SIZE)
+                    s.close()
+                print "received data:", data
+
+            #generate traffic udp (client)
+            elif option1 == '3':
+
+                print "insert ip target:"
+                UDP_IP = raw_input()
+                UDP_PORT = 5005
+                MESSAGE = "Hello, World! (UDP)"
+                print "message:", MESSAGE
+                while 1:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
+                    sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
+
+
 
             int_option=None
+
+###########################################################################################################
 
         # defender
         elif option == '2':
             print 'using IPTABLES for:'
             print "1) Dos Attack"
-            print "2) Send Mail"
+            print "2) block traffic tcp"
+            print "3) block traffic udp"
 
             option2 = raw_input()
             if option2 == '1':
                 os.system('sudo iptables -A INPUT -p tcp --dport 80 -m state --state NEW -m limit --limit 50/minute --limit-burst 200 -j ACCEPT')
 
+            #server tcp
             elif option2 == '2':
-                os.system('sudo iptables -A INPUT -s 0.0.0.0 --dport 25 -j DROP')
+                print 'insert ip client:'
+
+                TCP_IP = raw_input()
+                TCP_PORT = 5005
+                BUFFER_SIZE = 20  # Normally 1024, but we want fast response
+
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.bind((TCP_IP, TCP_PORT))
+
+                while 1:
+                    s.listen(1)
+                    conn, addr = s.accept()
+                    data = conn.recv(BUFFER_SIZE)
+                    print "received data:", data
+                    conn.send(data)  # echo
+                    conn.close()
+
+            # server udp
+            elif option2 == '3':
+                print 'insert ip client:'
+
+                UDP_IP = raw_input()
+                UDP_PORT = 5005
+                sock = socket.socket(socket.AF_INET,  # Internet
+                socket.SOCK_DGRAM)  # UDP
+                sock.bind((UDP_IP, UDP_PORT))
+
+                while True:
+                    data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
+                    print "received message:", data
 
 
 
