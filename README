@@ -1,0 +1,21 @@
+HOW TO USE:
+
+1)
+- modificare il nome statico dell'interfaccia nel file main.py
+
+#il mio indirizzo IP
+print 'Name wireless interface:'
+wlan = "wlan0" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
+
+2)
+per far partire il progetto è necessario installare il modulo netifaces
+seguire il seguente algoritmo:
+$ sudo apt-get install python2.7
+$ sudo apt-get install python-pip
+$ sudo aptitude install python2.7-setuptools
+$ sudo aptitude install python2.7-dev
+$ sudo pip install netifaces
+
+3)
+aprire terminale > cd percorso file > sudo python main.py > password di root
+
