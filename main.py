@@ -1,38 +1,41 @@
-import os
-import smtplib
-import socket
-
-#BISOGNA INSTALLARE QUESTO PACCHETTO!!!
-# sudo apt-get install python2.7
-# sudo apt-get install python-pip
-# sudo aptitude install python2.7-setuptools
-# sudo aptitude install python2.7-dev
-# sudo pip install netifaces
-import netifaces as ni
-
 # e necessario far partire il programma dal terminale con i seguenti comandi:
 # sudo python main.py
 #cosi facendo si hanno i permessi di root
+
+import os
+import smtplib
+import socket
+import netifaces as ni
 
 #########################################################################################################
 
 #variabile statica globale, mi serve per sapere se ho settato l'ip giusto
 configured=0
+#ruolo di host o gateway
+role=""
 
 #il mio indirizzo IP
 print 'Name wireless interface:'
-wlan = "wlan0" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
+wlan = "en1" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
 
-ni.ifaddresses(wlan)
-myIP = ni.ifaddresses(wlan)[2][0]['addr']
-print '- - - - - - - - - - '+myIP+' - - - - - - - - - - - \n'
+try:
+    ni.ifaddresses(wlan)
+    myIP = ni.ifaddresses(wlan)[2][0]['addr']
+    print '- - - - - - - - - - '+myIP+' - - - - - - - - - - - \n'
 
-print os.system('iwconfig | grep '+wlan)
-print '- - - - - - - - - - - - - - - - - - - - - - - - - -'
+    print os.system('iwconfig | grep '+wlan)
+    print '- - - - - - - - - - - - - - - - - - - - - - - - - -'
+except:
+    ni.ifaddresses("ra0:1")
+    myIP = ni.ifaddresses("ra0:1")[2][0]['addr']
+    print '- - - - - - - - - - ' + myIP + ' - - - - - - - - - - - \n'
+
+    print os.system('iwconfig | grep ' + "ra0:1")
+    print '- - - - - - - - - - - - - - - - - - - - - - - - - -'
 
 #########################################################################################################
 
-if not str(myIP).__contains__('172.30.'):
+if not (str(myIP).__contains__('172.30.1.')) or (str(myIP).__contains__('172.30.2.')):
     print '\nconfiguration:'
 
     print '0) gateway'
@@ -115,24 +118,31 @@ if not str(myIP).__contains__('172.30.'):
 # gia configurato
 else:
     int_option = None
+    if str(myIP).__contains__("172.30.1.2") or str(myIP).__contains__("172.30.1.3") or str(myIP).__contains__("172.30.2.2") or str(myIP).__contains__("172.30.2.3"):
+        role="host"
+    else:
+        role="gateway"
+
+    print  'you are a '+role
+    print '0) configuration'
 
     while int_option is None:
 
-        print '\n1) Attacker'
-        print '2) Defender'
+        #sono un host
+        if role.__contains__("host"):
 
-        try:
-            option = raw_input()
-        except SyntaxError:
-            option = None
-
-        # attacker
-        if option == '1':
-            print "1) Dos Attack"
+            print "1) Dos Attack (ping flooding)"
             print "2) traffic tcp"
             print "3) traffic udp"
 
-            option1 = raw_input()
+            try:
+                option1 = raw_input()
+            except SyntaxError:
+                option = None
+
+            #configuration
+            if option1 == '0':
+                os.system('sudo ifconfig '+wlan+' 192.168.1.1')
 
             #dos attack
             if option1 == '1':
@@ -169,20 +179,24 @@ else:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
                     sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
 
-
-
             int_option=None
 
 ###########################################################################################################
 
         # defender
-        elif option == '2':
-            print 'using IPTABLES for:'
-            print "1) Dos Attack"
+        else:
+            print "1) block dos Attack"
             print "2) block traffic tcp"
             print "3) block traffic udp"
 
-            option2 = raw_input()
+            try:
+                option2 = raw_input()
+            except SyntaxError:
+                option = None
+
+            if option1 == '0':
+                os.system('sudo ifconfig ' + wlan + ' 999.999.999.999')
+
             if option2 == '1':
                 os.system('sudo iptables -A INPUT -p tcp --dport 80 -m state --state NEW -m limit --limit 50/minute --limit-burst 200 -j ACCEPT')
 
@@ -207,17 +221,20 @@ else:
 
             # server udp
             elif option2 == '3':
-                print 'insert ip client:'
+                os.system('sudo iptables -A INPUT -p udp -m recent --set --name UDP-PORTSCAN -j REJECT --reject-with icmp-port-unreachable')
+                # print 'insert ip client:'
+                #
+                # UDP_IP = raw_input()
+                # UDP_PORT = 5005
+                # sock = socket.socket(socket.AF_INET,  # Internet
+                # socket.SOCK_DGRAM)  # UDP
+                # sock.bind((UDP_IP, UDP_PORT))
+                #
+                # while True:
+                #     data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
+                #     print "received message:", data
 
-                UDP_IP = raw_input()
-                UDP_PORT = 5005
-                sock = socket.socket(socket.AF_INET,  # Internet
-                socket.SOCK_DGRAM)  # UDP
-                sock.bind((UDP_IP, UDP_PORT))
 
-                while True:
-                    data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
-                    print "received message:", data
 
 
 
