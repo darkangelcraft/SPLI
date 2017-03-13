@@ -130,6 +130,7 @@ if str(configured) == "null":
         print '****************** reset configuration *************************'
         file = open("configured.txt", "w")
         file.write("null")
+        sys.exit(0)
 
     #########################################################################################################
 
@@ -186,6 +187,7 @@ else:
                 print '****************** reset configuration *************************'
                 file = open("configured.txt", "w")
                 file.write("null")
+                sys.exit(0)
 
             int_option=None
 
@@ -211,14 +213,20 @@ else:
 
             #icmp
             if option2 == '1':
-                os.system('sudo iptables -a INPUT -p icmp -i ra0 -j DROP')
+                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -j DROP')
+
+                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -s 172.30.1.2 -j DROP')
+                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -s 172.30.1.0/24 -j DROP')
+
                 os.system('sudo iptables -a forward -p icmp -i ra0 -s 172.30.1.2 -j DROP')
                 os.system('sudo iptables -a forward -p icmp -i ra0 -s 172.30.1.0/24 -j DROP')
+
                 print 'rule iptables ON'
 
             #server tcp
             elif option2 == '2':
-                os.system('')
+                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -m limit --limit 100/s --limit-burst 100 -j DROP')
+                print 'rule iptables ON'
 
             # server udp
             elif option2 == '3':
@@ -255,6 +263,7 @@ else:
                 print '****************** reset configuration *************************'
                 file = open("configured.txt", "w")
                 file.write("null")
+                sys.exit(0)
 
 
 
