@@ -19,6 +19,7 @@ configured = file.read()
 wlan = "en1" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
 
 print '1) start'
+print '2) reset'
 start = raw_input()
 if not start == '1':
     print '****************** reset configuration *************************'
