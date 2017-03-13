@@ -2,22 +2,29 @@
 # sudo python main.py
 #cosi facendo si hanno i permessi di root
 
+import sys
 import os
 import socket
 import netifaces as ni
 
 #########################################################################################################
 
-#file = open("configured.txt", "w")
-#file.write("null")
-
 #variabile statica globale, mi serve per sapere se ho settato l'ip giusto
+
 file = open("configured.txt", "r")
 configured = file.read()
 
 #il mio indirizzo IP
 #print 'Name wireless interface:'
 wlan = "en1" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
+
+print '1) start'
+start = raw_input()
+if not start == '1':
+    print '****************** reset configuration *************************'
+    file = open("configured.txt", "w")
+    file.write("null")
+    sys.exit(0)
 
 #prima configurazione
 if str(configured) == "null" or str(configured) == "host":
@@ -140,7 +147,6 @@ else:
             print "2) generate traffic tcp"
             print "3) generate traffic udp"
             print "4) ping"
-            print "\n5) open tcpdump"
 
             try:
                 option1 = raw_input()
@@ -174,9 +180,6 @@ else:
                 print "insert ip target:"
                 ip=raw_input()
                 os.system('sudo ping '+ip)
-
-            elif option1 == '5':
-                os.system('sudo tcpdump')
 
             else:
                 print '****************** reset configuration *************************'
