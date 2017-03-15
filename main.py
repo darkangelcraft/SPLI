@@ -9,8 +9,8 @@ import netifaces as ni
 
 #########################################################################################################
 
-#variabile statica globale presente all'interno del file configured.txt che
-# in base al valore capisco se non è configurato, è un host o è un gateway
+#variabile statica globale presente all interno del file configured.txt che
+# in base al valore capisco se non e configurato, e un host o e un gateway
 file = open("configured.txt", "r")
 configured = file.read()
 
