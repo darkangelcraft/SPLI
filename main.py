@@ -274,10 +274,7 @@ else:
                 os.system('sudo iptables -t nat -F')
                 os.system('sudo iptables -t mangle -F')
                 print 'rules iptables OFF'
-                os.system('sudo iptables -L')
-                os.system('sudo iptables -t nat -L')
-                os.system('sudo iptables -t mangle -L')
-
+                
             else:
                 print '****************** reset configuration *************************'
                 file = open("configured.txt", "w")
