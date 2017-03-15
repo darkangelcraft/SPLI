@@ -149,6 +149,7 @@ else:
             print "2) generate traffic tcp"
             print "3) generate traffic udp"
             print "4) ping"
+            print "5) ssh connection"
 
             try:
                 option1 = raw_input()
@@ -182,6 +183,11 @@ else:
                 print "insert ip target:"
                 ip=raw_input()
                 os.system('sudo ping '+ip)
+
+            elif option1 == '5':
+                print "insert user@ip_address:"
+                us_ip=raw_input()
+                os.system('sudo ssh '+us_ip)
 
             else:
                 print '****************** reset configuration *************************'
@@ -225,8 +231,8 @@ else:
 
             #permette solo mac address specificato
             elif option2 == '3':
-                os.system('sudo iptables -A INPUT -p tcp --dport 22 -j DROP')
-                os.system('sudo iptables -A INPUT -p tcp --dport 22 -m mac --mac-source e4:d5:3d:aa:7a:be -j ACCEPT')
+                os.system('sudo iptables -A FORWARD -p tcp --dport 22 -m mac --mac-source e4:d5:3d:aa:7a:be -j ACCEPT')
+                os.system('sudo iptables -A FORWARD -p tcp --dport 22 -j DROP')
                 print 'rule iptables ON'
 
             #blocca tcp
