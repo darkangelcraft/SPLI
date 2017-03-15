@@ -9,14 +9,13 @@ import netifaces as ni
 
 #########################################################################################################
 
-#variabile statica globale, mi serve per sapere se ho settato l'ip giusto
-
+#variabile statica globale presente all'interno del file configured.txt che
+# in base al valore capisco se non è configurato, è un host o è un gateway
 file = open("configured.txt", "r")
 configured = file.read()
 
-#il mio indirizzo IP
 #print 'Name wireless interface:'
-wlan = "en1" # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
+wlan = "en1"  # <- - - - - - - - - - - - - - -  [MODIFICARE INTERFACCIA WIFI]
 
 print '1) start'
 print '2) reset'
@@ -27,7 +26,8 @@ if not start == '1':
     file.write("null")
     sys.exit(0)
 
-#prima configurazione
+#il mio indirizzo IP
+#prima configurazione oppure sono un host
 if str(configured) == "null" or str(configured) == "host":
     ni.ifaddresses(wlan)
     myIP = ni.ifaddresses(wlan)[2][0]['addr']
@@ -42,7 +42,7 @@ else:
     print '- - - - - - - - - - ' + myIP + ' - - - - - - - - - - - \n'
 
     print os.system('iwconfig | grep ' + wlan)
-    print '- - - - - - - - - - - - - - - - - - - - - - - - - -'
+    print '- - - - - - - - - - - - - - - - - - - - - - - - - - -'
 
 #########################################################################################################
 
@@ -132,7 +132,7 @@ if str(configured) == "null":
         file.write("null")
         sys.exit(0)
 
-    #########################################################################################################
+#########################################################################################################
 
 # gia configurato (configured = 1)
 else:
@@ -143,7 +143,7 @@ else:
     while int_option is None:
 
         #sono un host
-        if str(configured)=="host":
+        if str(configured) == "host":
 
             print "1) Dos Attack (ping flooding)"
             print "2) generate traffic tcp"
@@ -156,13 +156,13 @@ else:
             except SyntaxError:
                 option = None
 
-            #dos attack
+            #dos attack ping flooding
             if option1 == '1':
                 print "insert ip target:"
                 ip = raw_input()
                 print os.system('sudo ping -f '+ip)
 
-            #generate traffic tcp with nmap (client)
+            #generate traffic tcp with nmap
             elif option1 == '2':
                 print "insert ip target:"
                 TCP_IP=raw_input()
@@ -176,16 +176,18 @@ else:
                 MESSAGE = "Hello, World! (UDP)"
                 print "message:", MESSAGE
                 while 1:
+                    print "message:", MESSAGE
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
                     sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
-                    print "message:", MESSAGE
                 sock.close()
 
+            #ping normale
             elif option1 == '4':
                 print "insert ip target:"
                 ip=raw_input()
                 os.system('sudo ping '+ip)
 
+            #connessione ssh "nome_macchina@ip_destinazione"
             elif option1 == '5':
                 print "insert user@ip_address:"
                 us_ip=raw_input()
@@ -203,16 +205,16 @@ else:
 
         # sono un gateway
         else:
-            print "IPTABLES FOR BLOCK:"
+            print "IPTABLES: FILTER:"
             print "\t1) block dos Attack"
-            print "\t2) block all network"
+            print "\t2) block all network 172.30.1.0/24"
             print "\t3) accept for mac address"
             print "\t4) block traffic tcp"
             print "\t5) block traffic udp"
-            print "IPTABLES FOR NAT:"
+            print "IPTABLES: NAT:"
             print "\t6) prerouting"
             print "\t7) postrouting"
-            print "IPTABLES FOR MANGLE:"
+            print "IPTABLES: MANGLE:"
             print "\t8) change ttl"
             print "\n9) delete all iptables rules"
 
@@ -238,9 +240,9 @@ else:
                 os.system('sudo iptables -A INPUT -p tcp --dport 22 -j DROP')
                 print 'rule iptables ON'
 
-            #blocca tcp
+            #blocca tcp (nmap)
             elif option2 == '4':
-                os.system('sudo iptables -A FORWARD -p tcp -m tcp --dport 22 -j DROP')
+                os.system('sudo iptables -A INPUT -p tcp -m tcp -j DROP')
 
             # server udp
             elif option2 == '5':
@@ -272,6 +274,9 @@ else:
                 os.system('sudo iptables -t nat -F')
                 os.system('sudo iptables -t mangle -F')
                 print 'rules iptables OFF'
+                os.system('sudo iptables -L')
+                os.system('sudo iptables -t nat -L')
+                os.system('sudo iptables -t mangle -L')
 
             else:
                 print '****************** reset configuration *************************'
