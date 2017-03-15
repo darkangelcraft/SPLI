@@ -225,7 +225,8 @@ else:
 
             #permette solo mac address specificato
             elif option2 == '3':
-                os.system('')
+                os.system('sudo iptables -A INPUT -p tcp --dport 22 -j DROP')
+                os.system('sudo iptables -A INPUT -p tcp --dport 22 -m mac --mac-source e4:d5:3d:aa:7a:be -j ACCEPT')
                 print 'rule iptables ON'
 
             #blocca tcp
