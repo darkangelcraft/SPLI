@@ -197,63 +197,67 @@ else:
         else:
             print "IPTABLES FOR BLOCK:"
             print "\t1) block dos Attack"
-            print "\t2) block traffic tcp"
-            print "\t3) block traffic udp"
+            print "\t2) block all network"
+            print "\t3) accept for mac address"
+            print "\t4) block traffic tcp"
+            print "\t5) block traffic udp"
             print "IPTABLES FOR NAT:"
-            print "\t4) prerouting"
-            print "\t5) postrouting"
+            print "\t6) prerouting"
+            print "\t7) postrouting"
             print "IPTABLES FOR MANGLE:"
-            print "\t6) mangle"
-            print "\n7) delete all iptables rules"
+            print "\t8) change ttl"
+            print "\n9) delete all iptables rules"
 
             try:
                 option2 = raw_input()
             except SyntaxError:
                 option = None
 
-            #icmp
+            #ping -f
             if option2 == '1':
-                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -j DROP')
-
-                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -s 172.30.1.2 -j DROP')
-                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -s 172.30.1.0/24 -j DROP')
-
-                os.system('sudo iptables -a forward -p icmp -i ra0 -s 172.30.1.2 -j DROP')
-                os.system('sudo iptables -a forward -p icmp -i ra0 -s 172.30.1.0/24 -j DROP')
-
-                print 'rule iptables ON'
-
-            #server tcp
-            elif option2 == '2':
                 os.system('sudo iptables -A FORWARD -p icmp -i ra0 -m limit --limit 100/s --limit-burst 100 -j DROP')
                 print 'rule iptables ON'
 
-            # server udp
+            #blocca rete 1
+            elif option2 == '2':
+                os.system('sudo iptables -A FORWARD -p icmp -i ra0 -s 172.30.1.0/24 -j DROP')
+                print 'rule iptables ON'
+
+            #permette solo mac address specificato
             elif option2 == '3':
+                os.system('')
+                print 'rule iptables ON'
+
+            #blocca tcp
+            elif option2 == '4':
+                os.system('sudo iptables -A FORWARD -p tcp -j DROP')
+
+            # server udp
+            elif option2 == '5':
                 os.system('sudo iptables -A FORWARD -p udp -m recent --set --name UDP-PORTSCAN -j REJECT --reject-with icmp-port-unreachable')
                 print 'rule iptables ON'
 
             #prerouting (destination)
-            elif option2 == '4':
+            elif option2 == '6':
                 print 'insert ip target'
                 ip=raw_input()
                 os.system('sudo iptables -t nat -A PREROUTING -i ra0 -j DNAT --to '+ip)
                 print 'rule iptables ON'
 
             #postrouting (source)
-            elif option2 == '5':
+            elif option2 == '7':
                 print 'insert ip target'
                 ip = raw_input()
                 os.system('sudo iptables -t nat -A POSTROUTING -p icmp -j SNAT --to '+ip)
                 print 'rule iptables ON'
 
             #mangle
-            elif option2 == '6':
+            elif option2 == '8':
                 os.system('sudo iptables -t mangle -A POSTROUTING -j TTL --ttl-inc 10')
                 print 'rule iptables ON'
 
             #cancella sia iptables che nat che mangle
-            elif option2 == '7':
+            elif option2 == '9':
                 os.system('sudo iptables -F')
                 os.system('sudo iptables -t nat -F')
                 os.system('sudo iptables -t mangle -F')
