@@ -178,6 +178,8 @@ else:
                 while 1:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP
                     sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
+                    print "message:", MESSAGE
+                sock.close()
 
             elif option1 == '4':
                 print "insert ip target:"
@@ -233,11 +235,12 @@ else:
             elif option2 == '3':
                 os.system('sudo iptables -A FORWARD -p tcp --dport 22 -m mac --mac-source e4:d5:3d:aa:7a:be -j ACCEPT')
                 os.system('sudo iptables -A FORWARD -p tcp --dport 22 -j DROP')
+                os.system('sudo iptables -A INPUT -p tcp --dport 22 -j DROP')
                 print 'rule iptables ON'
 
             #blocca tcp
             elif option2 == '4':
-                os.system('sudo iptables -A FORWARD -p tcp -j DROP')
+                os.system('sudo iptables -A FORWARD -p tcp -m tcp --dport 22 -j DROP')
 
             # server udp
             elif option2 == '5':
